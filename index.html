@@ -786,7 +786,7 @@
                 // XLSX 라이브러리 확인
                 if (typeof XLSX === 'undefined') {
                     showMessage('❌ Excel library not loaded. Please refresh the page and try again.', 'error');
-                    console.error('XLSX is not defined. Library may not have loaded properly.');
+                    console.error('XLSX is not defined');
                     return;
                 }
 
@@ -795,36 +795,93 @@
                     try {
                         const data = new Uint8Array(e.target.result);
                         const workbook = XLSX.read(data, { type: 'array' });
+                        
+                        if (!workbook.SheetNames || workbook.SheetNames.length === 0) {
+                            showMessage('❌ Excel file has no sheets', 'error');
+                            return;
+                        }
+
                         const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-                        const jsonData = XLSX.utils.sheet_to_json(worksheet);
+                        if (!worksheet) {
+                            showMessage('❌ Cannot read worksheet', 'error');
+                            return;
+                        }
+
+                        // 첫 번째 줄은 설명이므로 건너뛰고, 두 번째 줄부터 데이터로 처리
+                        const allRows = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                        
+                        // 첫 번째 줄 건너뛰기 (제약사항 설명)
+                        let startRow = 1;
+                        
+                        // 헤더 찾기
+                        let headerRow = null;
+                        for (let i = 0; i < Math.min(5, allRows.length); i++) {
+                            const row = allRows[i];
+                            if (row && row.length > 0 && typeof row[0] === 'string' && 
+                                (row[0].includes('Influencer') || row[0].includes('Name'))) {
+                                headerRow = i;
+                                startRow = i + 1;
+                                break;
+                            }
+                        }
+
+                        if (headerRow === null) {
+                            showMessage('❌ Cannot find header row in Excel file', 'error');
+                            return;
+                        }
+
+                        // 헤더와 데이터 추출
+                        const headers = allRows[headerRow];
+                        const jsonData = [];
+
+                        for (let i = startRow; i < allRows.length; i++) {
+                            const row = allRows[i];
+                            if (!row || row.length === 0) continue;
+                            
+                            const obj = {};
+                            headers.forEach((header, idx) => {
+                                if (header) {
+                                    obj[header] = row[idx] || '';
+                                }
+                            });
+                            
+                            // 빈 행 건너뛰기
+                            if (Object.values(obj).some(v => v !== '')) {
+                                jsonData.push(obj);
+                            }
+                        }
 
                         if (jsonData.length === 0) {
-                            showMessage('❌ Excel file is empty', 'error');
+                            showMessage('❌ No data found in Excel file', 'error');
                             return;
                         }
 
                         const tbody = document.getElementById('dataTable');
                         tbody.innerHTML = '';
 
-                        jsonData.forEach((row) => {
-                            // Product는 세미콜론으로 분리된 여러 개의 상품
-                            const products = String(row['Product'] || '')
-                                .split(';')
-                                .map(p => p.trim())
-                                .filter(p => p)
-                                .join(';');
+                        jsonData.forEach((row, idx) => {
+                            try {
+                                // Product는 세미콜론으로 분리된 여러 개의 상품
+                                const products = String(row['Product'] || '')
+                                    .split(';')
+                                    .map(p => p.trim())
+                                    .filter(p => p)
+                                    .join(';');
 
-                            const formattedData = {
-                                name: row['Influencer Name (or ID)'] || row['Influencer Name'],
-                                followers: parseInt(row['Followers']) || 0,
-                                product: products,
-                                category: row['Category'],
-                                url: row['Content URL'] || row['URL'] || '',
-                                platform: row['Platform'],
-                                impression: parseInt(row['Impression']) || 0,
-                                engagement: parseInt(row['Engagement']) || 0
-                            };
-                            addRow(formattedData);
+                                const formattedData = {
+                                    name: row['Influencer Name (or ID)'] || row['Influencer Name'] || `Row ${idx + 1}`,
+                                    followers: parseInt(row['Followers']) || 0,
+                                    product: products,
+                                    category: row['Category'] || '',
+                                    url: row['Content URL'] || row['URL'] || '',
+                                    platform: row['Platform'] || '',
+                                    impression: parseInt(row['Impression']) || 0,
+                                    engagement: parseInt(row['Engagement']) || 0
+                                };
+                                addRow(formattedData);
+                            } catch (rowError) {
+                                console.warn(`Warning processing row ${idx + 1}:`, rowError);
+                            }
                         });
 
                         showMessage(`✅ Excel file loaded! ${jsonData.length} rows imported.`, 'success');
@@ -834,7 +891,8 @@
                         showMessage(`❌ Error reading Excel file: ${error.message}`, 'error');
                     }
                 };
-                reader.onerror = function() {
+                reader.onerror = function(error) {
+                    console.error('File read error:', error);
                     showMessage('❌ Error reading file', 'error');
                 };
                 reader.readAsArrayBuffer(file);
