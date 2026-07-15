@@ -732,10 +732,17 @@
                     return;
                 }
 
-                // Firebase에 데이터 저장
+                // Firebase에 데이터 저장 (기존 데이터 완전 교체)
                 const ref = db.ref(`influencer_data/${currentSubs}`);
-                ref.set(data).then(() => {
+                ref.remove().then(() => {
+                    // 기존 데이터 먼저 삭제
+                    return ref.set(data);
+                }).then(() => {
                     showMessage(`✅ Data synced successfully for ${currentSubs}! Dashboard will update in real-time.`, 'success');
+                    // 3초 후 강제 새로고침 신호 전송
+                    setTimeout(() => {
+                        db.ref(`dashboard_sync/${currentSubs}`).set({ timestamp: Date.now() });
+                    }, 500);
                 }).catch((error) => {
                     showMessage(`❌ Error saving data: ${error.message}`, 'error');
                 });
