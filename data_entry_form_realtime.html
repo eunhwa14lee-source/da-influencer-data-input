@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Samsung Influencer Marketing - Data Entry Form (Real-time)</title>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #1428a0 0%, #0f1a6d 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 8px;
+        }
+
+        .header p {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .status {
+            display: inline-block;
+            margin-top: 10px;
+            padding: 6px 12px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 20px;
+            font-size: 12px;
+        }
+
+        .status.connected {
+            background: #4caf50;
+        }
+
+        .status.disconnected {
+            background: #f44336;
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        input[type="text"],
+        input[type="number"],
+        select {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            font-family: inherit;
+            transition: all 0.3s;
+        }
+
+        input[type="text"]:focus,
+        input[type="number"]:focus,
+        select:focus {
+            outline: none;
+            border-color: #1428a0;
+            box-shadow: 0 0 0 3px rgba(20, 40, 160, 0.1);
+        }
+
+        .section-title {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 30px 0 20px 0;
+            font-size: 16px;
+            font-weight: 700;
+            color: #1428a0;
+            border-left: 4px solid #1428a0;
+        }
+
+        .table-container {
+            overflow-x: auto;
+            margin-bottom: 20px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        thead {
+            background: #f0f0f0;
+        }
+
+        th {
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            color: #333;
+            border-bottom: 2px solid #ddd;
+        }
+
+        td {
+            padding: 10px 12px;
+            border-bottom: 1px solid #eee;
+        }
+
+        tbody tr:hover {
+            background: #f9f9f9;
+        }
+
+        input[type="text"],
+        input[type="number"],
+        select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+
+        .btn-container {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-top: 30px;
+        }
+
+        button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: #1428a0;
+            color: white;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            background: #0f1a6d;
+            box-shadow: 0 4px 12px rgba(20, 40, 160, 0.3);
+        }
+
+        .btn-primary:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .btn-secondary {
+            background: #f0f0f0;
+            color: #333;
+            border: 1px solid #ddd;
+        }
+
+        .btn-secondary:hover {
+            background: #e8e8e8;
+        }
+
+        .btn-small {
+            padding: 6px 12px;
+            font-size: 12px;
+        }
+
+        .btn-danger {
+            background: #f44336;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #da190b;
+        }
+
+        .add-row-btn {
+            background: #4caf50;
+            color: white;
+            margin-bottom: 15px;
+        }
+
+        .add-row-btn:hover {
+            background: #45a049;
+        }
+
+        .message {
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .message.success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+            display: block;
+        }
+
+        .message.error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+            display: block;
+        }
+
+        .info-box {
+            background: #e7f3ff;
+            border-left: 4px solid #2196f3;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            font-size: 13px;
+            color: #0c5aa0;
+        }
+
+        .sync-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #4caf50;
+            margin-right: 5px;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        @media (max-width: 768px) {
+            .content {
+                padding: 20px;
+            }
+
+            .header {
+                padding: 20px;
+            }
+
+            .header h1 {
+                font-size: 22px;
+            }
+
+            table {
+                font-size: 12px;
+            }
+
+            th, td {
+                padding: 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📝 Data Entry Form - Real-time Sync</h1>
+            <p id="subsName">Loading...</p>
+            <div class="status disconnected" id="connectionStatus">
+                <span class="sync-indicator" id="syncDot"></span>
+                <span id="statusText">Disconnected</span>
+            </div>
+        </div>
+
+        <div class="content">
+            <div id="message" class="message"></div>
+
+            <div class="info-box">
+                ℹ️ This form is connected in real-time! Changes will be reflected in the dashboard immediately. Make sure you have internet connection.
+            </div>
+
+            <div class="form-group">
+                <label for="subsSelect">Select Your Subs *</label>
+                <select id="subsSelect" onchange="changeSubs()">
+                    <option value="">Choose your Subs</option>
+                    <option value="GBM">GBM</option>
+                    <option value="SEA">SEA</option>
+                    <option value="SEUK">SEUK</option>
+                </select>
+            </div>
+
+            <div class="section-title">📋 Influencer Marketing Data</div>
+
+            <button class="add-row-btn" onclick="addRow()">+ Add Content</button>
+
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width: 15%;">Influencer Name</th>
+                            <th style="width: 12%;">Followers</th>
+                            <th style="width: 12%;">Product</th>
+                            <th style="width: 12%;">Category</th>
+                            <th style="width: 18%;">Content URL</th>
+                            <th style="width: 10%;">Platform</th>
+                            <th style="width: 10%;">Impression</th>
+                            <th style="width: 10%;">Engagement</th>
+                            <th style="width: 5%;">Delete</th>
+                        </tr>
+                    </thead>
+                    <tbody id="dataTable">
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="btn-container">
+                <button class="btn-primary" onclick="submitData()" id="submitBtn">✅ Submit & Sync</button>
+                <button class="btn-secondary" onclick="resetForm()">🔄 Reset</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ===== FIREBASE CONFIGURATION =====
+        // 아래 값들을 당신의 Firebase 프로젝트 정보로 교체하세요
+const firebaseConfig = {
+  apiKey: "AIzaSyBltxdfVfNzoWU9ZjRPD_ZA9qX6BdRmd90",
+  authDomain: "da-influencer.firebaseapp.com",
+  databaseURL: "https://da-influencer-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "da-influencer",
+  storageBucket: "da-influencer.firebasestorage.app",
+  messagingSenderId: "850189140596",
+  appId: "1:850189140596:web:1f89afe0c4f326bb298721"
+};
+
+        // Firebase 초기화
+        let db = null;
+        let isConnected = false;
+
+        try {
+            firebase.initializeApp(firebaseConfig);
+            db = firebase.database();
+            
+            // 연결 상태 감시
+            db.ref('.info/connected').on('value', (snapshot) => {
+                isConnected = snapshot.val();
+                updateConnectionStatus();
+            });
+        } catch (error) {
+            showMessage('⚠️ Firebase not configured. Please update the configuration first.', 'error');
+            console.error('Firebase error:', error);
+        }
+
+        let currentSubs = null;
+
+        function updateConnectionStatus() {
+            const statusEl = document.getElementById('connectionStatus');
+            const statusText = document.getElementById('statusText');
+            const syncDot = document.getElementById('syncDot');
+            const submitBtn = document.getElementById('submitBtn');
+
+            if (isConnected) {
+                statusEl.className = 'status connected';
+                statusText.textContent = '🟢 Connected - Real-time Sync Enabled';
+                syncDot.style.background = '#4caf50';
+                submitBtn.disabled = false;
+            } else {
+                statusEl.className = 'status disconnected';
+                statusText.textContent = '🔴 Disconnected - Check Internet';
+                syncDot.style.background = '#f44336';
+                submitBtn.disabled = true;
+            }
+        }
+
+        function changeSubs() {
+            const select = document.getElementById('subsSelect');
+            currentSubs = select.value;
+            document.getElementById('subsName').textContent = currentSubs ? `${currentSubs} - Data Entry Form` : 'Loading...';
+            
+            if (currentSubs) {
+                loadDataFromFirebase();
+            } else {
+                clearTable();
+            }
+        }
+
+        function clearTable() {
+            document.getElementById('dataTable').innerHTML = '';
+        }
+
+        function loadDataFromFirebase() {
+            if (!db || !currentSubs) return;
+
+            const ref = db.ref(`influencer_data/${currentSubs}`);
+            
+            ref.on('value', (snapshot) => {
+                const data = snapshot.val();
+                const tbody = document.getElementById('dataTable');
+                tbody.innerHTML = '';
+                
+                if (data) {
+                    Object.entries(data).forEach(([key, item]) => {
+                        addRow(item);
+                    });
+                } else {
+                    addRow();
+                }
+            });
+        }
+
+        function addRow(data = null) {
+            if (!currentSubs) {
+                showMessage('Please select your Subs first', 'error');
+                return;
+            }
+
+            const tbody = document.getElementById('dataTable');
+            const row = document.createElement('tr');
+            const rowId = 'row_' + Math.random().toString(36).substr(2, 9);
+            
+            row.setAttribute('data-row-id', rowId);
+            row.innerHTML = `
+                <td><input type="text" class="influencer-name" placeholder="Name" value="${data?.name || ''}" required></td>
+                <td><input type="number" class="followers" placeholder="e.g. 100000" value="${data?.followers || ''}" min="0" required></td>
+                <td><input type="text" class="product" placeholder="e.g. Washer" value="${data?.product || ''}" required></td>
+                <td><input type="text" class="category" placeholder="e.g. Lifestyle" value="${data?.category || ''}" required></td>
+                <td><input type="text" class="url" placeholder="https://..." value="${data?.url || ''}"></td>
+                <td>
+                    <select class="platform" required>
+                        <option value="">Select</option>
+                        <option value="Instagram" ${data?.platform === 'Instagram' ? 'selected' : ''}>Instagram</option>
+                        <option value="YouTube" ${data?.platform === 'YouTube' ? 'selected' : ''}>YouTube</option>
+                        <option value="TikTok" ${data?.platform === 'TikTok' ? 'selected' : ''}>TikTok</option>
+                    </select>
+                </td>
+                <td><input type="number" class="impression" placeholder="0" value="${data?.impression || ''}" min="0" required></td>
+                <td><input type="number" class="engagement" placeholder="0" value="${data?.engagement || ''}" min="0" required></td>
+                <td><button type="button" class="btn-danger btn-small" onclick="deleteRow('${rowId}')">Delete</button></td>
+            `;
+            
+            tbody.appendChild(row);
+        }
+
+        function deleteRow(rowId) {
+            const row = document.querySelector(`tr[data-row-id="${rowId}"]`);
+            if (row) {
+                row.remove();
+            }
+        }
+
+        function submitData() {
+            if (!currentSubs) {
+                showMessage('Please select your Subs first', 'error');
+                return;
+            }
+
+            if (!isConnected) {
+                showMessage('❌ Not connected to server. Check your internet connection.', 'error');
+                return;
+            }
+
+            const rows = document.querySelectorAll('#dataTable tr');
+            if (rows.length === 0) {
+                showMessage('Please add at least one row of data', 'error');
+                return;
+            }
+
+            const data = {};
+            let isValid = true;
+            let rowIndex = 0;
+
+            rows.forEach((row) => {
+                const name = row.querySelector('.influencer-name').value.trim();
+                const followers = parseInt(row.querySelector('.followers').value);
+                const product = row.querySelector('.product').value.trim();
+                const category = row.querySelector('.category').value.trim();
+                const url = row.querySelector('.url').value.trim();
+                const platform = row.querySelector('.platform').value;
+                const impression = parseInt(row.querySelector('.impression').value);
+                const engagement = parseInt(row.querySelector('.engagement').value);
+
+                if (!name || !product || !category || !platform || !impression) {
+                    showMessage(`Row ${rowIndex + 1}: Please fill in all required fields`, 'error');
+                    isValid = false;
+                    return;
+                }
+
+                const er = impression > 0 ? engagement / impression : 0;
+
+                data['row_' + rowIndex] = {
+                    name,
+                    followers,
+                    product,
+                    category,
+                    url,
+                    platform,
+                    impression,
+                    engagement,
+                    er
+                };
+
+                rowIndex++;
+            });
+
+            if (!isValid) return;
+
+            // Firebase에 데이터 저장
+            const ref = db.ref(`influencer_data/${currentSubs}`);
+            ref.set(data).then(() => {
+                showMessage(`✅ Data synced successfully for ${currentSubs}! Dashboard will update in real-time.`, 'success');
+            }).catch((error) => {
+                showMessage(`❌ Error saving data: ${error.message}`, 'error');
+            });
+        }
+
+        function resetForm() {
+            if (confirm('Are you sure you want to reset all data? This cannot be undone.')) {
+                if (!db || !currentSubs) return;
+
+                const ref = db.ref(`influencer_data/${currentSubs}`);
+                ref.remove().then(() => {
+                    clearTable();
+                    addRow();
+                    showMessage('🔄 Data reset', 'success');
+                }).catch((error) => {
+                    showMessage(`❌ Error resetting data: ${error.message}`, 'error');
+                });
+            }
+        }
+
+        function showMessage(text, type) {
+            const messageEl = document.getElementById('message');
+            messageEl.textContent = text;
+            messageEl.className = `message ${type}`;
+            setTimeout(() => {
+                messageEl.className = 'message';
+            }, 5000);
+        }
+
+        // Initialize
+        window.addEventListener('load', () => {
+            document.getElementById('subsSelect').focus();
+            updateConnectionStatus();
+        });
+    </script>
+</body>
+</html>
