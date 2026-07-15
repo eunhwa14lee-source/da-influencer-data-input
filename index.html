@@ -7,6 +7,8 @@
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <!-- SheetJS for Excel -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -22,7 +24,7 @@
         }
 
         .container {
-            max-width: 1200px;
+            max-width: 1400px;
             margin: 0 auto;
             background: white;
             border-radius: 12px;
@@ -82,6 +84,7 @@
 
         input[type="text"],
         input[type="number"],
+        input[type="file"],
         select {
             width: 100%;
             padding: 10px 12px;
@@ -94,6 +97,7 @@
 
         input[type="text"]:focus,
         input[type="number"]:focus,
+        input[type="file"]:focus,
         select:focus {
             outline: none;
             border-color: #1428a0;
@@ -196,6 +200,24 @@
             background: #e8e8e8;
         }
 
+        .btn-success {
+            background: #4caf50;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #45a049;
+        }
+
+        .btn-info {
+            background: #2196f3;
+            color: white;
+        }
+
+        .btn-info:hover {
+            background: #0b7dda;
+        }
+
         .btn-small {
             padding: 6px 12px;
             font-size: 12px;
@@ -251,19 +273,49 @@
             color: #0c5aa0;
         }
 
-        .sync-indicator {
+        .sync-badge {
             display: inline-block;
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
+            padding: 4px 8px;
             background: #4caf50;
-            margin-right: 5px;
-            animation: pulse 2s infinite;
+            color: white;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+
+        .sync-badge.updating {
+            background: #ff9800;
+            animation: pulse 1s infinite;
         }
 
         @keyframes pulse {
             0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
+            50% { opacity: 0.6; }
+        }
+
+        .excel-section {
+            background: #f9f9f9;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            border: 2px dashed #2196f3;
+        }
+
+        .excel-section h3 {
+            color: #2196f3;
+            margin-bottom: 15px;
+            font-size: 16px;
+        }
+
+        .excel-buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        #excelFile {
+            display: none;
         }
 
         @media (max-width: 768px) {
@@ -295,7 +347,6 @@
             <h1>📝 Data Entry Form - Real-time Sync</h1>
             <p id="subsName">Loading...</p>
             <div class="status disconnected" id="connectionStatus">
-                <span class="sync-indicator" id="syncDot"></span>
                 <span id="statusText">Disconnected</span>
             </div>
         </div>
@@ -304,7 +355,7 @@
             <div id="message" class="message"></div>
 
             <div class="info-box">
-                ℹ️ This form is connected in real-time! Changes will be reflected in the dashboard immediately. Make sure you have internet connection.
+                ℹ️ This form is connected in real-time! Changes will be reflected in the dashboard immediately. You can add rows manually or upload an Excel file.
             </div>
 
             <div class="form-group">
@@ -317,6 +368,16 @@
                 </select>
             </div>
 
+            <!-- Excel Upload/Download Section -->
+            <div class="excel-section">
+                <h3>📊 Excel File Management</h3>
+                <div class="excel-buttons">
+                    <button class="btn-info" onclick="downloadTemplate()">📥 Download Template</button>
+                    <button class="btn-success" onclick="document.getElementById('excelFile').click()">📤 Upload Excel</button>
+                    <input type="file" id="excelFile" accept=".xlsx,.xls,.csv" onchange="handleExcelUpload(event)">
+                </div>
+            </div>
+
             <div class="section-title">📋 Influencer Marketing Data</div>
 
             <button class="add-row-btn" onclick="addRow()">+ Add Content</button>
@@ -325,8 +386,8 @@
                 <table>
                     <thead>
                         <tr>
-                            <th style="width: 15%;">Influencer Name</th>
-                            <th style="width: 12%;">Followers</th>
+                            <th style="width: 15%;">Influencer Name (or ID)</th>
+                            <th style="width: 10%;">Followers</th>
                             <th style="width: 12%;">Product</th>
                             <th style="width: 12%;">Category</th>
                             <th style="width: 18%;">Content URL</th>
@@ -349,228 +410,302 @@
     </div>
 
     <script>
-        // ===== FIREBASE CONFIGURATION =====
- document.addEventListener('DOMContentLoaded', function() {
-const firebaseConfig = {
-  apiKey: "AIzaSyBltxdfVfNzoWU9ZjRPD_ZA9qX6BdRmd90",
-  authDomain: "da-influencer.firebaseapp.com",
-  databaseURL: "https://da-influencer-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "da-influencer",
-  storageBucket: "da-influencer.firebasestorage.app",
-  messagingSenderId: "850189140596",
-  appId: "1:850189140596:web:1f89afe0c4f326bb298721"
-};
+        document.addEventListener('DOMContentLoaded', function() {
+            // ===== FIREBASE CONFIGURATION =====
+            const firebaseConfig = {
+                apiKey: "AIzaSyBltxdfVfNzoWU9ZjRPD_ZA9qX6BdRmd90",
+                authDomain: "da-influencer.firebaseapp.com",
+                databaseURL: "https://da-influencer-default-rtdb.asia-southeast1.firebasedatabase.app",
+                projectId: "da-influencer",
+                storageBucket: "da-influencer.firebasestorage.app",
+                messagingSenderId: "850189140596",
+                appId: "1:850189140596:web:1f89afe0c4f326bb298721"
+            };
 
-        // Firebase 초기화
-        let db = null;
-        let isConnected = false;
+            // Firebase 초기화
+            let db = null;
+            let isConnected = false;
 
-        try {
-            firebase.initializeApp(firebaseConfig);
-            db = firebase.database();
-            
-            // 연결 상태 감시
-            db.ref('.info/connected').on('value', (snapshot) => {
-                isConnected = snapshot.val();
-                updateConnectionStatus();
-            });
-        } catch (error) {
-            showMessage('⚠️ Firebase not configured. Please update the configuration first.', 'error');
-            console.error('Firebase error:', error);
-        }
-
-        let currentSubs = null;
-
-        function updateConnectionStatus() {
-            const statusEl = document.getElementById('connectionStatus');
-            const statusText = document.getElementById('statusText');
-            const syncDot = document.getElementById('syncDot');
-            const submitBtn = document.getElementById('submitBtn');
-
-            if (isConnected) {
-                statusEl.className = 'status connected';
-                statusText.textContent = '🟢 Connected - Real-time Sync Enabled';
-                syncDot.style.background = '#4caf50';
-                submitBtn.disabled = false;
-            } else {
-                statusEl.className = 'status disconnected';
-                statusText.textContent = '🔴 Disconnected - Check Internet';
-                syncDot.style.background = '#f44336';
-                submitBtn.disabled = true;
-            }
-        }
-
-        function changeSubs() {
-            const select = document.getElementById('subsSelect');
-            currentSubs = select.value;
-            document.getElementById('subsName').textContent = currentSubs ? `${currentSubs} - Data Entry Form` : 'Loading...';
-            
-            if (currentSubs) {
-                loadDataFromFirebase();
-            } else {
-                clearTable();
-            }
-        }
-
-        function clearTable() {
-            document.getElementById('dataTable').innerHTML = '';
-        }
-
-        function loadDataFromFirebase() {
-            if (!db || !currentSubs) return;
-
-            const ref = db.ref(`influencer_data/${currentSubs}`);
-            
-            ref.on('value', (snapshot) => {
-                const data = snapshot.val();
-                const tbody = document.getElementById('dataTable');
-                tbody.innerHTML = '';
+            try {
+                firebase.initializeApp(firebaseConfig);
+                db = firebase.database();
                 
-                if (data) {
-                    Object.entries(data).forEach(([key, item]) => {
-                        addRow(item);
-                    });
+                // 연결 상태 감시
+                db.ref('.info/connected').on('value', (snapshot) => {
+                    isConnected = snapshot.val();
+                    updateConnectionStatus();
+                });
+            } catch (error) {
+                showMessage('⚠️ Firebase not configured. Please update the configuration first.', 'error');
+                console.error('Firebase error:', error);
+            }
+
+            let currentSubs = null;
+
+            window.updateConnectionStatus = function() {
+                const statusEl = document.getElementById('connectionStatus');
+                const statusText = document.getElementById('statusText');
+                const submitBtn = document.getElementById('submitBtn');
+
+                if (isConnected) {
+                    statusEl.className = 'status connected';
+                    statusText.textContent = '🟢 Connected - Real-time Sync Enabled';
+                    submitBtn.disabled = false;
                 } else {
-                    addRow();
+                    statusEl.className = 'status disconnected';
+                    statusText.textContent = '🔴 Disconnected - Check Internet';
+                    submitBtn.disabled = true;
                 }
-            });
-        }
+            };
 
-        function addRow(data = null) {
-            if (!currentSubs) {
-                showMessage('Please select your Subs first', 'error');
-                return;
-            }
-
-            const tbody = document.getElementById('dataTable');
-            const row = document.createElement('tr');
-            const rowId = 'row_' + Math.random().toString(36).substr(2, 9);
-            
-            row.setAttribute('data-row-id', rowId);
-            row.innerHTML = `
-                <td><input type="text" class="influencer-name" placeholder="Name" value="${data?.name || ''}" required></td>
-                <td><input type="number" class="followers" placeholder="e.g. 100000" value="${data?.followers || ''}" min="0" required></td>
-                <td><input type="text" class="product" placeholder="e.g. Washer" value="${data?.product || ''}" required></td>
-                <td><input type="text" class="category" placeholder="e.g. Lifestyle" value="${data?.category || ''}" required></td>
-                <td><input type="text" class="url" placeholder="https://..." value="${data?.url || ''}"></td>
-                <td>
-                    <select class="platform" required>
-                        <option value="">Select</option>
-                        <option value="Instagram" ${data?.platform === 'Instagram' ? 'selected' : ''}>Instagram</option>
-                        <option value="YouTube" ${data?.platform === 'YouTube' ? 'selected' : ''}>YouTube</option>
-                        <option value="TikTok" ${data?.platform === 'TikTok' ? 'selected' : ''}>TikTok</option>
-                    </select>
-                </td>
-                <td><input type="number" class="impression" placeholder="0" value="${data?.impression || ''}" min="0" required></td>
-                <td><input type="number" class="engagement" placeholder="0" value="${data?.engagement || ''}" min="0" required></td>
-                <td><button type="button" class="btn-danger btn-small" onclick="deleteRow('${rowId}')">Delete</button></td>
-            `;
-            
-            tbody.appendChild(row);
-        }
-
-        function deleteRow(rowId) {
-            const row = document.querySelector(`tr[data-row-id="${rowId}"]`);
-            if (row) {
-                row.remove();
-            }
-        }
-
-        function submitData() {
-            if (!currentSubs) {
-                showMessage('Please select your Subs first', 'error');
-                return;
-            }
-
-            if (!isConnected) {
-                showMessage('❌ Not connected to server. Check your internet connection.', 'error');
-                return;
-            }
-
-            const rows = document.querySelectorAll('#dataTable tr');
-            if (rows.length === 0) {
-                showMessage('Please add at least one row of data', 'error');
-                return;
-            }
-
-            const data = {};
-            let isValid = true;
-            let rowIndex = 0;
-
-            rows.forEach((row) => {
-                const name = row.querySelector('.influencer-name').value.trim();
-                const followers = parseInt(row.querySelector('.followers').value);
-                const product = row.querySelector('.product').value.trim();
-                const category = row.querySelector('.category').value.trim();
-                const url = row.querySelector('.url').value.trim();
-                const platform = row.querySelector('.platform').value;
-                const impression = parseInt(row.querySelector('.impression').value);
-                const engagement = parseInt(row.querySelector('.engagement').value);
-
-                if (!name || !product || !category || !platform || !impression) {
-                    showMessage(`Row ${rowIndex + 1}: Please fill in all required fields`, 'error');
-                    isValid = false;
-                    return;
+            window.changeSubs = function() {
+                const select = document.getElementById('subsSelect');
+                currentSubs = select.value;
+                document.getElementById('subsName').textContent = currentSubs ? `${currentSubs} - Data Entry Form` : 'Loading...';
+                
+                if (currentSubs) {
+                    loadDataFromFirebase();
+                } else {
+                    clearTable();
                 }
+            };
 
-                const er = impression > 0 ? engagement / impression : 0;
+            window.clearTable = function() {
+                document.getElementById('dataTable').innerHTML = '';
+            };
 
-                data['row_' + rowIndex] = {
-                    name,
-                    followers,
-                    product,
-                    category,
-                    url,
-                    platform,
-                    impression,
-                    engagement,
-                    er
-                };
-
-                rowIndex++;
-            });
-
-            if (!isValid) return;
-
-            // Firebase에 데이터 저장
-            const ref = db.ref(`influencer_data/${currentSubs}`);
-            ref.set(data).then(() => {
-                showMessage(`✅ Data synced successfully for ${currentSubs}! Dashboard will update in real-time.`, 'success');
-            }).catch((error) => {
-                showMessage(`❌ Error saving data: ${error.message}`, 'error');
-            });
-        }
-
-        function resetForm() {
-            if (confirm('Are you sure you want to reset all data? This cannot be undone.')) {
+            window.loadDataFromFirebase = function() {
                 if (!db || !currentSubs) return;
 
                 const ref = db.ref(`influencer_data/${currentSubs}`);
-                ref.remove().then(() => {
-                    clearTable();
-                    addRow();
-                    showMessage('🔄 Data reset', 'success');
-                }).catch((error) => {
-                    showMessage(`❌ Error resetting data: ${error.message}`, 'error');
+                
+                ref.on('value', (snapshot) => {
+                    const data = snapshot.val();
+                    const tbody = document.getElementById('dataTable');
+                    tbody.innerHTML = '';
+                    
+                    if (data) {
+                        Object.entries(data).forEach(([key, item]) => {
+                            addRow(item);
+                        });
+                    } else {
+                        addRow();
+                    }
                 });
-            }
-        }
+            };
 
-        function showMessage(text, type) {
-            const messageEl = document.getElementById('message');
-            messageEl.textContent = text;
-            messageEl.className = `message ${type}`;
-            setTimeout(() => {
-                messageEl.className = 'message';
-            }, 5000);
-        }
+            window.addRow = function(data = null) {
+                if (!currentSubs) {
+                    showMessage('Please select your Subs first', 'error');
+                    return;
+                }
 
-        // Initialize
-        window.addEventListener('load', () => {
-            document.getElementById('subsSelect').focus();
-            updateConnectionStatus();
+                const tbody = document.getElementById('dataTable');
+                const row = document.createElement('tr');
+                const rowId = 'row_' + Math.random().toString(36).substr(2, 9);
+                
+                row.setAttribute('data-row-id', rowId);
+                row.innerHTML = `
+                    <td><input type="text" class="influencer-name" placeholder="Name or ID" value="${data?.name || ''}" required></td>
+                    <td><input type="number" class="followers" placeholder="e.g. 100000" value="${data?.followers || ''}" min="0" onchange="validateNumber(this)" required></td>
+                    <td><input type="text" class="product" placeholder="e.g. Washer" value="${data?.product || ''}" required></td>
+                    <td>
+                        <select class="category" required>
+                            <option value="">Select Category</option>
+                            <option value="Lifestyle" ${data?.category === 'Lifestyle' ? 'selected' : ''}>Lifestyle</option>
+                            <option value="Design" ${data?.category === 'Design' ? 'selected' : ''}>Design</option>
+                            <option value="Cooking" ${data?.category === 'Cooking' ? 'selected' : ''}>Cooking</option>
+                            <option value="Tech" ${data?.category === 'Tech' ? 'selected' : ''}>Tech</option>
+                        </select>
+                    </td>
+                    <td><input type="text" class="url" placeholder="https://..." value="${data?.url || ''}"></td>
+                    <td>
+                        <select class="platform" required>
+                            <option value="">Select</option>
+                            <option value="Instagram" ${data?.platform === 'Instagram' ? 'selected' : ''}>Instagram</option>
+                            <option value="YouTube" ${data?.platform === 'YouTube' ? 'selected' : ''}>YouTube</option>
+                            <option value="TikTok" ${data?.platform === 'TikTok' ? 'selected' : ''}>TikTok</option>
+                        </select>
+                    </td>
+                    <td><input type="number" class="impression" placeholder="0" value="${data?.impression || ''}" min="0" onchange="validateNumber(this)" required></td>
+                    <td><input type="number" class="engagement" placeholder="0" value="${data?.engagement || ''}" min="0" onchange="validateNumber(this)" required></td>
+                    <td><button type="button" class="btn-danger btn-small" onclick="deleteRow('${rowId}')">Delete</button></td>
+                `;
+                
+                tbody.appendChild(row);
+            };
+
+            window.deleteRow = function(rowId) {
+                const row = document.querySelector(`tr[data-row-id="${rowId}"]`);
+                if (row) {
+                    row.remove();
+                }
+            };
+
+            window.validateNumber = function(input) {
+                if (input.value < 0) {
+                    input.value = 0;
+                }
+            };
+
+            window.submitData = function() {
+                if (!currentSubs) {
+                    showMessage('Please select your Subs first', 'error');
+                    return;
+                }
+
+                if (!isConnected) {
+                    showMessage('❌ Not connected to server. Check your internet connection.', 'error');
+                    return;
+                }
+
+                const rows = document.querySelectorAll('#dataTable tr');
+                if (rows.length === 0) {
+                    showMessage('Please add at least one row of data', 'error');
+                    return;
+                }
+
+                const data = {};
+                let isValid = true;
+                let rowIndex = 0;
+
+                rows.forEach((row) => {
+                    const name = row.querySelector('.influencer-name').value.trim();
+                    const followers = parseInt(row.querySelector('.followers').value) || 0;
+                    const product = row.querySelector('.product').value.trim();
+                    const category = row.querySelector('.category').value;
+                    const url = row.querySelector('.url').value.trim();
+                    const platform = row.querySelector('.platform').value;
+                    const impression = parseInt(row.querySelector('.impression').value) || 0;
+                    const engagement = parseInt(row.querySelector('.engagement').value) || 0;
+
+                    if (!name || !product || !category || !platform || impression === 0) {
+                        showMessage(`Row ${rowIndex + 1}: Please fill in all required fields`, 'error');
+                        isValid = false;
+                        return;
+                    }
+
+                    const er = impression > 0 ? engagement / impression : 0;
+
+                    data['row_' + rowIndex] = {
+                        name,
+                        followers,
+                        product,
+                        category,
+                        url,
+                        platform,
+                        impression,
+                        engagement,
+                        er
+                    };
+
+                    rowIndex++;
+                });
+
+                if (!isValid) return;
+
+                // Firebase에 데이터 저장
+                const ref = db.ref(`influencer_data/${currentSubs}`);
+                ref.set(data).then(() => {
+                    showMessage(`✅ Data synced successfully for ${currentSubs}! Dashboard will update in real-time.`, 'success');
+                }).catch((error) => {
+                    showMessage(`❌ Error saving data: ${error.message}`, 'error');
+                });
+            };
+
+            window.resetForm = function() {
+                if (confirm('Are you sure you want to reset all data? This cannot be undone.')) {
+                    if (!db || !currentSubs) return;
+
+                    const ref = db.ref(`influencer_data/${currentSubs}`);
+                    ref.remove().then(() => {
+                        clearTable();
+                        addRow();
+                        showMessage('🔄 Data reset', 'success');
+                    }).catch((error) => {
+                        showMessage(`❌ Error resetting data: ${error.message}`, 'error');
+                    });
+                }
+            };
+
+            window.downloadTemplate = function() {
+                const worksheet = XLSX.utils.json_to_sheet([
+                    {
+                        'Influencer Name (or ID)': 'Example User',
+                        'Followers': 100000,
+                        'Product': 'Washer',
+                        'Category': 'Lifestyle',
+                        'Content URL': 'https://instagram.com/example',
+                        'Platform': 'Instagram',
+                        'Impression': 50000,
+                        'Engagement': 2500
+                    }
+                ]);
+
+                const workbook = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(workbook, worksheet, 'Data');
+                XLSX.writeFile(workbook, 'influencer_template.xlsx');
+                showMessage('📥 Template downloaded!', 'success');
+            };
+
+            window.handleExcelUpload = function(event) {
+                if (!currentSubs) {
+                    showMessage('Please select your Subs first', 'error');
+                    return;
+                }
+
+                const file = event.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const data = new Uint8Array(e.target.result);
+                        const workbook = XLSX.read(data, { type: 'array' });
+                        const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+                        const jsonData = XLSX.utils.sheet_to_json(worksheet);
+
+                        const tbody = document.getElementById('dataTable');
+                        tbody.innerHTML = '';
+
+                        jsonData.forEach((row) => {
+                            const formattedData = {
+                                name: row['Influencer Name (or ID)'] || row['Influencer Name'],
+                                followers: parseInt(row['Followers']) || 0,
+                                product: row['Product'],
+                                category: row['Category'],
+                                url: row['Content URL'] || row['URL'],
+                                platform: row['Platform'],
+                                impression: parseInt(row['Impression']) || 0,
+                                engagement: parseInt(row['Engagement']) || 0
+                            };
+                            addRow(formattedData);
+                        });
+
+                        showMessage(`✅ Excel file loaded! ${jsonData.length} rows imported.`, 'success');
+                        document.getElementById('excelFile').value = '';
+                    } catch (error) {
+                        showMessage(`❌ Error reading Excel file: ${error.message}`, 'error');
+                    }
+                };
+                reader.readAsArrayBuffer(file);
+            };
+
+            window.showMessage = function(text, type) {
+                const messageEl = document.getElementById('message');
+                messageEl.textContent = text;
+                messageEl.className = `message ${type}`;
+                setTimeout(() => {
+                    messageEl.className = 'message';
+                }, 5000);
+            };
+
+            // Initialize
+            window.addEventListener('load', () => {
+                document.getElementById('subsSelect').focus();
+                updateConnectionStatus();
+            });
         });
-     });  
     </script>
 </body>
 </html>
