@@ -1,0 +1,860 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Samsung Influencer Marketing - Data Entry Form (Real-time)</title>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <!-- SheetJS for Excel -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #1428a0 0%, #0f1a6d 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 8px;
+        }
+
+        .header p {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .status {
+            display: inline-block;
+            margin-top: 10px;
+            padding: 6px 12px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 20px;
+            font-size: 12px;
+        }
+
+        .status.connected {
+            background: #4caf50;
+        }
+
+        .status.disconnected {
+            background: #f44336;
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        input[type="text"],
+        input[type="number"],
+        input[type="file"],
+        select {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            font-family: inherit;
+            transition: all 0.3s;
+        }
+
+        input[type="text"]:focus,
+        input[type="number"]:focus,
+        input[type="file"]:focus,
+        select:focus {
+            outline: none;
+            border-color: #1428a0;
+            box-shadow: 0 0 0 3px rgba(20, 40, 160, 0.1);
+        }
+
+        .section-title {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 30px 0 20px 0;
+            font-size: 16px;
+            font-weight: 700;
+            color: #1428a0;
+            border-left: 4px solid #1428a0;
+        }
+
+        .table-container {
+            overflow-x: auto;
+            margin-bottom: 20px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        thead {
+            background: #f0f0f0;
+        }
+
+        th {
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            color: #333;
+            border-bottom: 2px solid #ddd;
+        }
+
+        td {
+            padding: 10px 12px;
+            border-bottom: 1px solid #eee;
+        }
+
+        tbody tr:hover {
+            background: #f9f9f9;
+        }
+
+        input[type="text"],
+        input[type="number"],
+        select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+
+        .btn-container {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-top: 30px;
+        }
+
+        button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: #1428a0;
+            color: white;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            background: #0f1a6d;
+            box-shadow: 0 4px 12px rgba(20, 40, 160, 0.3);
+        }
+
+        .btn-primary:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .btn-secondary {
+            background: #f0f0f0;
+            color: #333;
+            border: 1px solid #ddd;
+        }
+
+        .btn-secondary:hover {
+            background: #e8e8e8;
+        }
+
+        .btn-success {
+            background: #4caf50;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #45a049;
+        }
+
+        .btn-info {
+            background: #2196f3;
+            color: white;
+        }
+
+        .btn-info:hover {
+            background: #0b7dda;
+        }
+
+        .btn-small {
+            padding: 6px 12px;
+            font-size: 12px;
+        }
+
+        .btn-danger {
+            background: #f44336;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #da190b;
+        }
+
+        .add-row-btn {
+            background: #4caf50;
+            color: white;
+            margin-bottom: 15px;
+        }
+
+        .add-row-btn:hover {
+            background: #45a049;
+        }
+
+        .message {
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .message.success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+            display: block;
+        }
+
+        .message.error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+            display: block;
+        }
+
+        .info-box {
+            background: #e7f3ff;
+            border-left: 4px solid #2196f3;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            font-size: 13px;
+            color: #0c5aa0;
+        }
+
+        .sync-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            background: #4caf50;
+            color: white;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+
+        .sync-badge.updating {
+            background: #ff9800;
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+
+        .excel-section {
+            background: #f9f9f9;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            border: 2px dashed #2196f3;
+        }
+
+        .excel-section h3 {
+            color: #2196f3;
+            margin-bottom: 15px;
+            font-size: 16px;
+        }
+
+        .excel-buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        #excelFile {
+            display: none;
+        }
+
+        .category-toggles,
+        .product-toggles {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 8px;
+        }
+
+        .toggle-btn {
+            padding: 8px 12px;
+            border: 2px solid #ddd;
+            background: white;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            transition: all 0.3s;
+            color: #333;
+        }
+
+        .toggle-btn:hover {
+            border-color: #1428a0;
+            background: #f0f0f0;
+        }
+
+        .toggle-btn.active {
+            background: #1428a0;
+            color: white;
+            border-color: #1428a0;
+        }
+
+        .product-toggles {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+        }
+
+        @media (max-width: 768px) {
+            .product-toggles {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📝 Data Entry Form - Real-time Sync</h1>
+            <p id="subsName">Loading...</p>
+            <div class="status disconnected" id="connectionStatus">
+                <span id="statusText">Disconnected</span>
+            </div>
+        </div>
+
+        <div class="content">
+            <div id="message" class="message"></div>
+
+            <div class="info-box">
+                ℹ️ This form is connected in real-time! Changes will be reflected in the dashboard immediately. You can add rows manually or upload an Excel file.
+            </div>
+
+            <div class="form-group">
+                <label for="subsSelect">Select Your Subs *</label>
+                <select id="subsSelect" onchange="changeSubs()">
+                    <option value="">Choose your Subs</option>
+                    <option value="GBM">GBM</option>
+                    <option value="SEA">SEA</option>
+                    <option value="SEUK">SEUK</option>
+                </select>
+            </div>
+
+            <!-- Excel Upload/Download Section -->
+            <div class="excel-section">
+                <h3>📊 Excel File Management</h3>
+                <div class="excel-buttons">
+                    <button class="btn-info" onclick="downloadTemplate()">📥 Download Template</button>
+                    <button class="btn-success" onclick="document.getElementById('excelFile').click()">📤 Upload Excel</button>
+                    <input type="file" id="excelFile" accept=".xlsx,.xls,.csv" onchange="handleExcelUpload(event)">
+                </div>
+            </div>
+
+            <div class="section-title">📋 Influencer Marketing Data</div>
+
+            <button class="add-row-btn" onclick="addRow()">+ Add Content</button>
+
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width: 12%;">Influencer Name (or ID)</th>
+                            <th style="width: 8%;">Followers</th>
+                            <th style="width: 18%;">Product</th>
+                            <th style="width: 10%;">Category</th>
+                            <th style="width: 15%;">Content URL</th>
+                            <th style="width: 10%;">Platform</th>
+                            <th style="width: 10%;">Impression</th>
+                            <th style="width: 10%;">Engagement</th>
+                            <th style="width: 7%;">Delete</th>
+                        </tr>
+                    </thead>
+                    <tbody id="dataTable">
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="btn-container">
+                <button class="btn-primary" onclick="submitData()" id="submitBtn">✅ Submit & Sync</button>
+                <button class="btn-secondary" onclick="resetForm()">🔄 Reset</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // ===== FIREBASE CONFIGURATION =====
+            const firebaseConfig = {
+                apiKey: "AIzaSyBltxdfVfNzoWU9ZjRPD_ZA9qX6BdRmd90",
+                authDomain: "da-influencer.firebaseapp.com",
+                databaseURL: "https://da-influencer-default-rtdb.asia-southeast1.firebasedatabase.app",
+                projectId: "da-influencer",
+                storageBucket: "da-influencer.firebasestorage.app",
+                messagingSenderId: "850189140596",
+                appId: "1:850189140596:web:1f89afe0c4f326bb298721"
+            };
+
+            // Firebase 초기화
+            let db = null;
+            let isConnected = false;
+
+            try {
+                firebase.initializeApp(firebaseConfig);
+                db = firebase.database();
+                
+                // 연결 상태 감시
+                db.ref('.info/connected').on('value', (snapshot) => {
+                    isConnected = snapshot.val();
+                    updateConnectionStatus();
+                });
+            } catch (error) {
+                showMessage('⚠️ Firebase not configured. Please update the configuration first.', 'error');
+                console.error('Firebase error:', error);
+            }
+
+            let currentSubs = null;
+
+            window.updateConnectionStatus = function() {
+                const statusEl = document.getElementById('connectionStatus');
+                const statusText = document.getElementById('statusText');
+                const submitBtn = document.getElementById('submitBtn');
+
+                if (isConnected) {
+                    statusEl.className = 'status connected';
+                    statusText.textContent = '🟢 Connected - Real-time Sync Enabled';
+                    submitBtn.disabled = false;
+                } else {
+                    statusEl.className = 'status disconnected';
+                    statusText.textContent = '🔴 Disconnected - Check Internet';
+                    submitBtn.disabled = true;
+                }
+            };
+
+            window.changeSubs = function() {
+                const select = document.getElementById('subsSelect');
+                currentSubs = select.value;
+                document.getElementById('subsName').textContent = currentSubs ? `${currentSubs} - Data Entry Form` : 'Loading...';
+                
+                if (currentSubs) {
+                    loadDataFromFirebase();
+                } else {
+                    clearTable();
+                }
+            };
+
+            window.clearTable = function() {
+                document.getElementById('dataTable').innerHTML = '';
+            };
+
+            window.loadDataFromFirebase = function() {
+                if (!db || !currentSubs) return;
+
+                const ref = db.ref(`influencer_data/${currentSubs}`);
+                
+                ref.on('value', (snapshot) => {
+                    const data = snapshot.val();
+                    const tbody = document.getElementById('dataTable');
+                    tbody.innerHTML = '';
+                    
+                    if (data) {
+                        Object.entries(data).forEach(([key, item]) => {
+                            addRow(item);
+                        });
+                    } else {
+                        addRow();
+                    }
+                });
+            };
+
+            window.addRow = function(data = null) {
+                if (!currentSubs) {
+                    showMessage('Please select your Subs first', 'error');
+                    return;
+                }
+
+                const tbody = document.getElementById('dataTable');
+                const row = document.createElement('tr');
+                const rowId = 'row_' + Math.random().toString(36).substr(2, 9);
+                
+                row.setAttribute('data-row-id', rowId);
+                
+                // Product 토글 생성
+                const products = ['Refrigerator', 'Washer/Dryer', 'AC', 'Cooking', 'DW', 'VC'];
+                const selectedProducts = data?.product ? data.product.split(';') : [];
+                const productToggles = products.map(product => `
+                    <span class="toggle-btn ${selectedProducts.includes(product) ? 'active' : ''}" 
+                          onclick="toggleProduct(this, '${product}')" 
+                          style="cursor: pointer;">
+                        ${product}
+                    </span>
+                `).join('');
+                
+                row.innerHTML = `
+                    <td><input type="text" class="influencer-name" placeholder="Name or ID" value="${data?.name || ''}" required></td>
+                    <td><input type="number" class="followers" placeholder="e.g. 100000" value="${data?.followers || ''}" min="0" onchange="validateNumber(this)" required></td>
+                    <td>
+                        <div class="product-toggles" data-row-id="${rowId}">
+                            ${productToggles}
+                        </div>
+                        <input type="hidden" class="product" value="${data?.product || ''}">
+                    </td>
+                    <td>
+                        <select class="category" required onchange="validateRowOnChange(this)">
+                            <option value="">Select Category</option>
+                            <option value="Lifestyle" ${data?.category === 'Lifestyle' ? 'selected' : ''}>Lifestyle</option>
+                            <option value="Design" ${data?.category === 'Design' ? 'selected' : ''}>Design</option>
+                            <option value="Cooking" ${data?.category === 'Cooking' ? 'selected' : ''}>Cooking</option>
+                            <option value="Tech" ${data?.category === 'Tech' ? 'selected' : ''}>Tech</option>
+                        </select>
+                    </td>
+                    <td><input type="text" class="url" placeholder="https://..." value="${data?.url || ''}"></td>
+                    <td>
+                        <select class="platform" required>
+                            <option value="">Select</option>
+                            <option value="Instagram" ${data?.platform === 'Instagram' ? 'selected' : ''}>Instagram</option>
+                            <option value="YouTube" ${data?.platform === 'YouTube' ? 'selected' : ''}>YouTube</option>
+                            <option value="TikTok" ${data?.platform === 'TikTok' ? 'selected' : ''}>TikTok</option>
+                        </select>
+                    </td>
+                    <td><input type="number" class="impression" placeholder="0" value="${data?.impression || ''}" min="0" onchange="validateNumber(this)" required></td>
+                    <td><input type="number" class="engagement" placeholder="0" value="${data?.engagement || ''}" min="0" onchange="validateNumber(this)" required></td>
+                    <td><button type="button" class="btn-danger btn-small" onclick="deleteRow('${rowId}')">Delete</button></td>
+                `;
+                
+                tbody.appendChild(row);
+            };
+
+            window.deleteRow = function(rowId) {
+                const row = document.querySelector(`tr[data-row-id="${rowId}"]`);
+                if (row) {
+                    row.remove();
+                }
+            };
+
+            window.validateNumber = function(input) {
+                if (input.value < 0) {
+                    input.value = 0;
+                }
+            };
+
+            window.toggleProduct = function(element, product) {
+                element.classList.toggle('active');
+                
+                // 선택된 제품들을 업데이트
+                const container = element.closest('.product-toggles');
+                const buttons = container.querySelectorAll('.toggle-btn');
+                const selectedProducts = Array.from(buttons)
+                    .filter(btn => btn.classList.contains('active'))
+                    .map(btn => btn.textContent.trim())
+                    .join(';');
+                
+                // hidden input에 값 저장
+                const productInput = container.parentElement.querySelector('.product');
+                productInput.value = selectedProducts;
+                
+                // 행 배경색 초기화
+                const row = container.closest('tr');
+                row.style.backgroundColor = '';
+            };
+
+            window.validateRowOnChange = function(element) {
+                const row = element.closest('tr');
+                const validProducts = ['Refrigerator', 'Washer/Dryer', 'AC', 'Cooking', 'DW', 'VC'];
+                const validCategories = ['Lifestyle', 'Design', 'Cooking', 'Tech'];
+                
+                const product = row.querySelector('.product').value.trim();
+                const category = row.querySelector('.category').value;
+                
+                let hasError = false;
+                
+                // Product 검증
+                if (product) {
+                    const products = product.split(';').map(p => p.trim());
+                    const invalidProducts = products.filter(p => !validProducts.includes(p));
+                    if (invalidProducts.length > 0) {
+                        hasError = true;
+                    }
+                }
+                
+                // Category 검증
+                if (category && !validCategories.includes(category)) {
+                    hasError = true;
+                }
+                
+                // 배경색 설정
+                if (hasError) {
+                    row.style.backgroundColor = '#ffcdd2';
+                } else {
+                    row.style.backgroundColor = '';
+                }
+            };
+
+            window.submitData = function() {
+                if (!currentSubs) {
+                    showMessage('Please select your Subs first', 'error');
+                    return;
+                }
+
+                if (!isConnected) {
+                    showMessage('❌ Not connected to server. Check your internet connection.', 'error');
+                    return;
+                }
+
+                const rows = document.querySelectorAll('#dataTable tr');
+                if (rows.length === 0) {
+                    showMessage('Please add at least one row of data', 'error');
+                    return;
+                }
+
+                // 유효한 값들
+                const validProducts = ['Refrigerator', 'Washer/Dryer', 'AC', 'Cooking', 'DW', 'VC'];
+                const validCategories = ['Lifestyle', 'Design', 'Cooking', 'Tech'];
+
+                const data = {};
+                let isValid = true;
+                let rowIndex = 0;
+                let errorMessages = [];
+
+                rows.forEach((row) => {
+                    const name = row.querySelector('.influencer-name').value.trim();
+                    const followers = parseInt(row.querySelector('.followers').value) || 0;
+                    const product = row.querySelector('.product').value.trim();
+                    const category = row.querySelector('.category').value;
+                    const url = row.querySelector('.url').value.trim();
+                    const platform = row.querySelector('.platform').value;
+                    const impression = parseInt(row.querySelector('.impression').value) || 0;
+                    const engagement = parseInt(row.querySelector('.engagement').value) || 0;
+
+                    // 필드 검증
+                    if (!name || !product || !category || !platform || impression === 0) {
+                        errorMessages.push(`Row ${rowIndex + 1}: Please fill in all required fields`);
+                        isValid = false;
+                        row.style.backgroundColor = '#ffebee';
+                        rowIndex++;
+                        return;
+                    }
+
+                    // Product 검증
+                    const products = product.split(';').map(p => p.trim());
+                    const invalidProducts = products.filter(p => !validProducts.includes(p));
+                    
+                    if (invalidProducts.length > 0) {
+                        errorMessages.push(`Row ${rowIndex + 1}: Invalid Product(s): ${invalidProducts.join(', ')}. Valid: ${validProducts.join(', ')}`);
+                        isValid = false;
+                        row.style.backgroundColor = '#ffcdd2';
+                    } else {
+                        row.style.backgroundColor = '';
+                    }
+
+                    // Category 검증
+                    if (!validCategories.includes(category)) {
+                        errorMessages.push(`Row ${rowIndex + 1}: Invalid Category: ${category}. Valid: ${validCategories.join(', ')}`);
+                        isValid = false;
+                        row.style.backgroundColor = '#ffcdd2';
+                    } else if (invalidProducts.length === 0) {
+                        row.style.backgroundColor = '';
+                    }
+
+                    if (!isValid) {
+                        rowIndex++;
+                        return;
+                    }
+
+                    const er = impression > 0 ? engagement / impression : 0;
+
+                    data['row_' + rowIndex] = {
+                        name,
+                        followers,
+                        product,
+                        category,
+                        url,
+                        platform,
+                        impression,
+                        engagement,
+                        er
+                    };
+
+                    row.style.backgroundColor = '';
+                    rowIndex++;
+                });
+
+                if (!isValid) {
+                    showMessage(`❌ Validation errors found:\n${errorMessages.join('\n')}`, 'error');
+                    return;
+                }
+
+                // Firebase에 데이터 저장 (기존 데이터 완전 교체)
+                const ref = db.ref(`influencer_data/${currentSubs}`);
+                ref.remove().then(() => {
+                    // 기존 데이터 먼저 삭제
+                    return ref.set(data);
+                }).then(() => {
+                    showMessage(`✅ Data synced successfully for ${currentSubs}! Dashboard will update in real-time.`, 'success');
+                    // 3초 후 강제 새로고침 신호 전송
+                    setTimeout(() => {
+                        db.ref(`dashboard_sync/${currentSubs}`).set({ timestamp: Date.now() });
+                    }, 500);
+                }).catch((error) => {
+                    showMessage(`❌ Error saving data: ${error.message}`, 'error');
+                });
+            };
+
+            window.resetForm = function() {
+                if (confirm('Are you sure you want to reset all data? This cannot be undone.')) {
+                    if (!db || !currentSubs) return;
+
+                    const ref = db.ref(`influencer_data/${currentSubs}`);
+                    ref.remove().then(() => {
+                        clearTable();
+                        addRow();
+                        showMessage('🔄 Data reset', 'success');
+                    }).catch((error) => {
+                        showMessage(`❌ Error resetting data: ${error.message}`, 'error');
+                    });
+                }
+            };
+
+            window.downloadTemplate = function() {
+                // GitHub에서 미리 생성된 엑셀 파일 다운로드
+                const link = document.createElement('a');
+                link.href = 'https://raw.githubusercontent.com/eunhwa14lee-source/da-influencer-data-input/main/influencer_data_template.xlsx';
+                link.download = 'influencer_data_template.xlsx';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                showMessage('📥 Template download started!', 'success');
+            };
+
+            window.handleExcelUpload = function(event) {
+                if (!currentSubs) {
+                    showMessage('Please select your Subs first', 'error');
+                    return;
+                }
+
+                const file = event.target.files[0];
+                if (!file) return;
+
+                // XLSX 라이브러리 확인
+                if (typeof XLSX === 'undefined') {
+                    showMessage('❌ Excel library not loaded. Please refresh the page and try again.', 'error');
+                    console.error('XLSX is not defined. Library may not have loaded properly.');
+                    return;
+                }
+
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const data = new Uint8Array(e.target.result);
+                        const workbook = XLSX.read(data, { type: 'array' });
+                        const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+                        const jsonData = XLSX.utils.sheet_to_json(worksheet);
+
+                        if (jsonData.length === 0) {
+                            showMessage('❌ Excel file is empty', 'error');
+                            return;
+                        }
+
+                        const tbody = document.getElementById('dataTable');
+                        tbody.innerHTML = '';
+
+                        jsonData.forEach((row) => {
+                            // Product는 세미콜론으로 분리된 여러 개의 상품
+                            const products = String(row['Product'] || '')
+                                .split(';')
+                                .map(p => p.trim())
+                                .filter(p => p)
+                                .join(';');
+
+                            const formattedData = {
+                                name: row['Influencer Name (or ID)'] || row['Influencer Name'],
+                                followers: parseInt(row['Followers']) || 0,
+                                product: products,
+                                category: row['Category'],
+                                url: row['Content URL'] || row['URL'] || '',
+                                platform: row['Platform'],
+                                impression: parseInt(row['Impression']) || 0,
+                                engagement: parseInt(row['Engagement']) || 0
+                            };
+                            addRow(formattedData);
+                        });
+
+                        showMessage(`✅ Excel file loaded! ${jsonData.length} rows imported.`, 'success');
+                        document.getElementById('excelFile').value = '';
+                    } catch (error) {
+                        console.error('Excel parsing error:', error);
+                        showMessage(`❌ Error reading Excel file: ${error.message}`, 'error');
+                    }
+                };
+                reader.onerror = function() {
+                    showMessage('❌ Error reading file', 'error');
+                };
+                reader.readAsArrayBuffer(file);
+            };
+
+            window.showMessage = function(text, type) {
+                const messageEl = document.getElementById('message');
+                messageEl.textContent = text;
+                messageEl.className = `message ${type}`;
+                setTimeout(() => {
+                    messageEl.className = 'message';
+                }, 5000);
+            };
+
+            // Initialize
+            window.addEventListener('load', () => {
+                document.getElementById('subsSelect').focus();
+                updateConnectionStatus();
+            });
+        });
+    </script>
+</body>
+</html>
